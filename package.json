@@ -1,0 +1,9 @@
+{
+  "name": "mishmar",
+  "version": "1.0.0",
+  "description": "Rule of Life Builder - Christian and Messianic Jewish spiritual practice tracker",
+  "scripts": {
+    "dev": "python3 -m http.server 8000",
+    "build": "echo 'No build step needed for this static site'"
+  }
+}
