@@ -24,7 +24,7 @@
   <script type="text/babel">
     const { useState, useEffect } = React;
 
-    // Lucide icons as inline SVG components
+    // Icons
     const Plus = ({ size = 24, className = "" }) => (
       <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
         <line x1="12" y1="5" x2="12" y2="19"></line>
@@ -83,13 +83,13 @@
       </svg>
     );
 
-    const Sparkles = ({ size = 24, className = "", style = {} }) => (
+    const Journal = ({ size = 24, className = "", style = {} }) => (
       <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className} style={style}>
-        <path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z"></path>
-        <path d="M5 3v4"></path>
-        <path d="M19 17v4"></path>
-        <path d="M3 5h4"></path>
-        <path d="M17 19h4"></path>
+        <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path>
+        <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path>
+        <line x1="10" y1="8" x2="16" y2="8"></line>
+        <line x1="10" y1="12" x2="16" y2="12"></line>
+        <line x1="10" y1="16" x2="14" y2="16"></line>
       </svg>
     );
 
@@ -116,7 +116,18 @@
       </svg>
     );
 
-    // Mock storage API using localStorage
+    const List = ({ size = 24, className = "" }) => (
+      <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+        <line x1="8" y1="6" x2="21" y2="6"></line>
+        <line x1="8" y1="12" x2="21" y2="12"></line>
+        <line x1="8" y1="18" x2="21" y2="18"></line>
+        <line x1="3" y1="6" x2="3.01" y2="6"></line>
+        <line x1="3" y1="12" x2="3.01" y2="12"></line>
+        <line x1="3" y1="18" x2="3.01" y2="18"></line>
+      </svg>
+    );
+
+    // Mock storage
     const createMockStorage = () => {
       return {
         get: async (key) => {
@@ -138,7 +149,6 @@
       };
     };
 
-    // Use window.storage if available, otherwise fallback to localStorage
     if (!window.storage) {
       window.storage = createMockStorage();
     }
@@ -147,8 +157,11 @@
       const [practices, setPractices] = useState([]);
       const [showAddForm, setShowAddForm] = useState(false);
       const [editingId, setEditingId] = useState(null);
-      const [aiSuggestion, setAiSuggestion] = useState('');
-      const [loadingAI, setLoadingAI] = useState(false);
+      const [reflections, setReflections] = useState([]);
+      const [showReflectionForm, setShowReflectionForm] = useState(false);
+      const [currentReflection, setCurrentReflection] = useState('');
+      const [currentPromptIndex, setCurrentPromptIndex] = useState(0);
+      const [view, setView] = useState('list'); // 'list' or 'timeline'
       
       useEffect(() => {
         const loadPractices = async () => {
@@ -162,6 +175,18 @@
           }
         };
         loadPractices();
+
+        const loadReflections = async () => {
+          try {
+            const result = await window.storage.get('mishmar-reflections');
+            if (result && result.value) {
+              setReflections(JSON.parse(result.value));
+            }
+          } catch (error) {
+            console.log('No existing reflections found');
+          }
+        };
+        loadReflections();
       }, []);
 
       const savePractices = async (newPractices) => {
@@ -174,11 +199,11 @@
       };
 
       const categories = [
-        { id: 'prayer', label: 'Prayer', icon: Heart, color: '#FFB3BA' },
-        { id: 'scripture', label: 'Scripture', icon: BookOpen, color: '#BAE1FF' },
-        { id: 'community', label: 'Community', icon: Users, color: '#FFFFBA' },
-        { id: 'rest', label: 'Rest', icon: Moon, color: '#D4BAFF' },
-        { id: 'service', label: 'Service', icon: Sparkles, color: '#BAFFC9' },
+        { id: 'prayer', label: 'Prayer', icon: Heart, color: '#FFB3BA', bg: '#FFF0F1' },
+        { id: 'scripture', label: 'Scripture', icon: BookOpen, color: '#BAE1FF', bg: '#F0F8FF' },
+        { id: 'community', label: 'Community', icon: Users, color: '#FFFFBA', bg: '#FFFEF0' },
+        { id: 'rest', label: 'Rest', icon: Moon, color: '#D4BAFF', bg: '#F8F0FF' },
+        { id: 'service', label: 'Service', icon: Journal, color: '#BAFFC9', bg: '#F0FFF4' },
       ];
 
       const frequencies = [
@@ -188,6 +213,19 @@
         { id: 'seasonal', label: 'Seasonal' },
       ];
 
+      const daysOfWeek = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+
+      const reflectionPrompts = [
+        "How can you invite God into your routine? What would it look like to walk each day with Him?",
+        "Where in your daily schedule do you feel most rushed or stressed? How might God meet you there?",
+        "What activities fill your week that could become opportunities for prayer or worship?",
+        "Are there moments in your day when you naturally pause? Could these become sacred rhythms?",
+        "How do your current practices help you love God and love others better?",
+        "What spiritual disciplines have you been avoiding? What fears or obstacles hold you back?",
+        "If Jesus walked through a typical week with you, what would He notice? What would He celebrate?",
+        "Where do you sense God's invitation to slow down, to rest, to abide with Him?",
+      ];
+
       const [newPractice, setNewPractice] = useState({
         name: '',
         category: 'prayer',
@@ -195,6 +233,7 @@
         time: '',
         duration: '',
         notes: '',
+        dayOfWeek: 'Monday',
       });
 
       const resetForm = () => {
@@ -205,6 +244,7 @@
           time: '',
           duration: '',
           notes: '',
+          dayOfWeek: 'Monday',
         });
         setEditingId(null);
         setShowAddForm(false);
@@ -242,46 +282,39 @@
         setShowAddForm(true);
       };
 
-      const getAISuggestion = async () => {
-        setLoadingAI(true);
-        setAiSuggestion('');
-        
+      const saveReflection = async () => {
+        if (!currentReflection.trim()) return;
+
+        const reflection = {
+          id: Date.now(),
+          prompt: reflectionPrompts[currentPromptIndex],
+          text: currentReflection,
+          createdAt: new Date().toISOString(),
+        };
+
+        const updated = [reflection, ...reflections];
         try {
-          const currentPractices = practices.map(p => 
-            `${p.name} (${p.category}, ${p.frequency})`
-          ).join(', ');
-          
-          const prompt = currentPractices 
-            ? `I'm building a Rule of Life with these practices: ${currentPractices}. Suggest one complementary spiritual practice I might be missing, considering Christian and Messianic Jewish traditions. Keep it brief and practical.`
-            : `Suggest a foundational spiritual practice for someone starting a Rule of Life, drawing from Christian and Messianic Jewish traditions. Keep it brief and practical.`;
-
-          const response = await fetch("https://api.anthropic.com/v1/messages", {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({
-              model: "claude-sonnet-4-20250514",
-              max_tokens: 1000,
-              messages: [
-                { role: "user", content: prompt }
-              ],
-            })
-          });
-
-          const data = await response.json();
-          const suggestion = data.content
-            .filter(item => item.type === "text")
-            .map(item => item.text)
-            .join("\n");
-          
-          setAiSuggestion(suggestion);
+          await window.storage.set('mishmar-reflections', JSON.stringify(updated));
+          setReflections(updated);
+          setCurrentReflection('');
+          setShowReflectionForm(false);
         } catch (error) {
-          console.error('Error getting AI suggestion:', error);
-          setAiSuggestion('Unable to get AI suggestion at this time. The AI feature works best when accessed through Claude.ai artifacts.');
-        } finally {
-          setLoadingAI(false);
+          console.error('Error saving reflection:', error);
         }
+      };
+
+      const deleteReflection = async (id) => {
+        const updated = reflections.filter(r => r.id !== id);
+        try {
+          await window.storage.set('mishmar-reflections', JSON.stringify(updated));
+          setReflections(updated);
+        } catch (error) {
+          console.error('Error deleting reflection:', error);
+        }
+      };
+
+      const getNextPrompt = () => {
+        setCurrentPromptIndex((currentPromptIndex + 1) % reflectionPrompts.length);
       };
 
       const getCategoryIcon = (categoryId) => {
@@ -294,86 +327,88 @@
         return category ? category.color : '#FFB3BA';
       };
 
+      const getCategoryBg = (categoryId) => {
+        const category = categories.find(c => c.id === categoryId);
+        return category ? category.bg : '#FFF0F1';
+      };
+
       const groupedPractices = frequencies.reduce((acc, freq) => {
         acc[freq.id] = practices.filter(p => p.frequency === freq.id);
         return acc;
       }, {});
 
+      const weeklyPractices = practices.filter(p => 
+        p.frequency === 'daily' || p.frequency === 'weekly'
+      );
+
+      const practicesByDay = daysOfWeek.reduce((acc, day) => {
+        acc[day] = weeklyPractices.filter(p => {
+          if (p.frequency === 'daily') return true;
+          if (p.frequency === 'weekly' && p.dayOfWeek === day) return true;
+          return false;
+        });
+        return acc;
+      }, {});
+
       return (
-        <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 text-gray-100" 
+        <div className="min-h-screen bg-[#E0F9FF]" 
              style={{ fontFamily: 'Poppins, sans-serif' }}>
           
-          <div className="bg-gray-800/50 backdrop-blur-sm border-b border-gray-700/50">
-            <div className="max-w-6xl mx-auto px-6 py-8">
+          {/* Header */}
+          <div className="bg-white/80 backdrop-blur-sm border-b border-gray-200 sticky top-0 z-50">
+            <div className="max-w-6xl mx-auto px-6 py-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <h1 className="text-4xl font-light tracking-wide text-gray-100 mb-2">
-                    Mishmar
+                  <h1 className="text-3xl font-black tracking-wide text-gray-800 mb-1">
+                    Mishmar // <i>GUARD</i>
                   </h1>
-                  <p className="text-gray-400 font-light">
-                    Your Rule of Life · מִשְׁמָר
+                  <p className="text-gray-500 font-light text-sm">
+                    Practicing Life With God · מִשְׁמָר
                   </p>
                 </div>
-                <button
-                  onClick={() => setShowAddForm(!showAddForm)}
-                  className="flex items-center gap-2 px-6 py-3 rounded-lg font-medium transition-all
-                           bg-gray-700/50 hover:bg-gray-700 text-gray-200 border border-gray-600/50"
-                >
-                  {showAddForm ? (
-                    <>
-                      <X size={20} />
-                      Cancel
-                    </>
-                  ) : (
-                    <>
-                      <Plus size={20} />
-                      Add Practice
-                    </>
-                  )}
-                </button>
+                <div className="flex gap-3">
+                  <button
+                    onClick={() => setView(view === 'list' ? 'timeline' : 'list')}
+                    className="flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-all text-sm
+                             bg-purple-100 hover:bg-purple-200 text-purple-700 border border-purple-200"
+                  >
+                    {view === 'list' ? <Calendar size={18} /> : <List size={18} />}
+                    {view === 'list' ? 'Week View' : 'List View'}
+                  </button>
+                  <button
+                    onClick={() => setShowAddForm(!showAddForm)}
+                    className="flex items-center gap-2 px-5 py-2 rounded-lg font-medium transition-all text-sm
+                             bg-blue-100 hover:bg-blue-200 text-blue-700 border border-blue-200"
+                  >
+                    {showAddForm ? (
+                      <>
+                        <X size={18} />
+                        Cancel
+                      </>
+                    ) : (
+                      <>
+                        <Plus size={18} />
+                        Add Practice
+                      </>
+                    )}
+                  </button>
+                </div>
               </div>
             </div>
           </div>
 
           <div className="max-w-6xl mx-auto px-6 py-8">
             
-            <div className="mb-8 bg-gray-800/30 backdrop-blur-sm rounded-xl p-6 border border-gray-700/50">
-              <div className="flex items-start justify-between mb-4">
-                <div className="flex items-center gap-3">
-                  <Sparkles size={24} className="text-purple-300" />
-                  <h2 className="text-xl font-medium text-gray-200">Spiritual Guidance</h2>
-                </div>
-                <button
-                  onClick={getAISuggestion}
-                  disabled={loadingAI}
-                  className="px-4 py-2 rounded-lg font-medium transition-all text-sm
-                           bg-purple-900/30 hover:bg-purple-900/50 text-purple-200 
-                           border border-purple-700/50 disabled:opacity-50"
-                >
-                  {loadingAI ? 'Reflecting...' : 'Get Suggestion'}
-                </button>
-              </div>
-              {aiSuggestion && (
-                <p className="text-gray-300 leading-relaxed font-light">
-                  {aiSuggestion}
-                </p>
-              )}
-              {!aiSuggestion && !loadingAI && (
-                <p className="text-gray-500 italic font-light">
-                  Click "Get Suggestion" for personalized spiritual practice ideas
-                </p>
-              )}
-            </div>
-
+            {/* Add/Edit Form */}
             {showAddForm && (
-              <div className="mb-8 bg-gray-800/40 backdrop-blur-sm rounded-xl p-6 border border-gray-700/50">
-                <h3 className="text-xl font-medium text-gray-200 mb-6">
+              <div className="mb-8 bg-gray-800 rounded-2xl p-6 border border-gray-700 shadow-sm">
+                <h3 className="text-xl font-medium text-pink-200 mb-6">
                   {editingId ? 'Edit Practice' : 'New Practice'}
                 </h3>
                 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div className="md:col-span-2">
-                    <label className="block text-sm font-medium text-gray-300 mb-2">
+                    <label className="block text-sm font-medium text-purple-200 mb-2">
                       Practice Name
                     </label>
                     <input
@@ -381,21 +416,21 @@
                       value={newPractice.name}
                       onChange={(e) => setNewPractice({...newPractice, name: e.target.value})}
                       placeholder="e.g., Morning Prayer, Shabbat Candles"
-                      className="w-full px-4 py-3 rounded-lg bg-gray-900/50 border border-gray-700 
-                               text-gray-100 placeholder-gray-500 focus:outline-none focus:border-gray-600
+                      className="w-full px-4 py-3 rounded-lg bg-gray-900 border border-gray-600 
+                               text-gray-100 placeholder-gray-500 focus:outline-none focus:border-purple-400
                                transition-colors"
                     />
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-gray-300 mb-2">
+                    <label className="block text-sm font-medium text-purple-200 mb-2">
                       Category
                     </label>
                     <select
                       value={newPractice.category}
                       onChange={(e) => setNewPractice({...newPractice, category: e.target.value})}
-                      className="w-full px-4 py-3 rounded-lg bg-gray-900/50 border border-gray-700 
-                               text-gray-100 focus:outline-none focus:border-gray-600 transition-colors"
+                      className="w-full px-4 py-3 rounded-lg bg-gray-900 border border-gray-600 
+                               text-gray-100 focus:outline-none focus:border-purple-400 transition-colors"
                     >
                       {categories.map(cat => (
                         <option key={cat.id} value={cat.id}>{cat.label}</option>
@@ -404,14 +439,14 @@
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-gray-300 mb-2">
+                    <label className="block text-sm font-medium text-purple-200 mb-2">
                       Frequency
                     </label>
                     <select
                       value={newPractice.frequency}
                       onChange={(e) => setNewPractice({...newPractice, frequency: e.target.value})}
-                      className="w-full px-4 py-3 rounded-lg bg-gray-900/50 border border-gray-700 
-                               text-gray-100 focus:outline-none focus:border-gray-600 transition-colors"
+                      className="w-full px-4 py-3 rounded-lg bg-gray-900 border border-gray-600 
+                               text-gray-100 focus:outline-none focus:border-purple-400 transition-colors"
                     >
                       {frequencies.map(freq => (
                         <option key={freq.id} value={freq.id}>{freq.label}</option>
@@ -419,8 +454,26 @@
                     </select>
                   </div>
 
+                  {newPractice.frequency === 'weekly' && (
+                    <div>
+                      <label className="block text-sm font-medium text-purple-200 mb-2">
+                        Day of Week
+                      </label>
+                      <select
+                        value={newPractice.dayOfWeek}
+                        onChange={(e) => setNewPractice({...newPractice, dayOfWeek: e.target.value})}
+                        className="w-full px-4 py-3 rounded-lg bg-gray-900 border border-gray-600 
+                                 text-gray-100 focus:outline-none focus:border-purple-400 transition-colors"
+                      >
+                        {daysOfWeek.map(day => (
+                          <option key={day} value={day}>{day}</option>
+                        ))}
+                      </select>
+                    </div>
+                  )}
+
                   <div>
-                    <label className="block text-sm font-medium text-gray-300 mb-2">
+                    <label className="block text-sm font-medium text-purple-200 mb-2">
                       Time of Day
                     </label>
                     <input
@@ -428,14 +481,14 @@
                       value={newPractice.time}
                       onChange={(e) => setNewPractice({...newPractice, time: e.target.value})}
                       placeholder="e.g., Morning, 7:00 AM"
-                      className="w-full px-4 py-3 rounded-lg bg-gray-900/50 border border-gray-700 
-                               text-gray-100 placeholder-gray-500 focus:outline-none focus:border-gray-600
+                      className="w-full px-4 py-3 rounded-lg bg-gray-900 border border-gray-600 
+                               text-gray-100 placeholder-gray-500 focus:outline-none focus:border-purple-400
                                transition-colors"
                     />
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-gray-300 mb-2">
+                    <label className="block text-sm font-medium text-purple-200 mb-2">
                       Duration
                     </label>
                     <input
@@ -443,23 +496,23 @@
                       value={newPractice.duration}
                       onChange={(e) => setNewPractice({...newPractice, duration: e.target.value})}
                       placeholder="e.g., 15 minutes"
-                      className="w-full px-4 py-3 rounded-lg bg-gray-900/50 border border-gray-700 
-                               text-gray-100 placeholder-gray-500 focus:outline-none focus:border-gray-600
+                      className="w-full px-4 py-3 rounded-lg bg-gray-900 border border-gray-600 
+                               text-gray-100 placeholder-gray-500 focus:outline-none focus:border-purple-400
                                transition-colors"
                     />
                   </div>
 
                   <div className="md:col-span-2">
-                    <label className="block text-sm font-medium text-gray-300 mb-2">
+                    <label className="block text-sm font-medium text-purple-200 mb-2">
                       Notes
                     </label>
-                                       <textarea
+                    <textarea
                       value={newPractice.notes}
                       onChange={(e) => setNewPractice({...newPractice, notes: e.target.value})}
                       placeholder="Additional details, scripture references, intentions..."
                       rows="3"
-                      className="w-full px-4 py-3 rounded-lg bg-gray-900/50 border border-gray-700 
-                               text-gray-100 placeholder-gray-500 focus:outline-none focus:border-gray-600
+                      className="w-full px-4 py-3 rounded-lg bg-gray-900 border border-gray-600 
+                               text-gray-100 placeholder-gray-500 focus:outline-none focus:border-purple-400
                                transition-colors resize-none"
                     />
                   </div>
@@ -469,15 +522,15 @@
                   <button
                     onClick={editingId ? updatePractice : addPractice}
                     className="flex items-center gap-2 px-6 py-3 rounded-lg font-medium transition-all
-                             bg-blue-900/40 hover:bg-blue-900/60 text-blue-200 border border-blue-700/50"
+                             bg-blue-600 hover:bg-blue-700 text-white"
                   >
                     <Save size={18} />
-                    {editingId ? 'Update Practice' : 'Save Practice'}
+                    {editingId ? 'Update' : 'Save'}
                   </button>
                   <button
                     onClick={resetForm}
                     className="px-6 py-3 rounded-lg font-medium transition-all
-                             bg-gray-700/30 hover:bg-gray-700/50 text-gray-300 border border-gray-600/50"
+                             bg-gray-700 hover:bg-gray-600 text-gray-200"
                   >
                     Cancel
                   </button>
@@ -485,111 +538,332 @@
               </div>
             )}
 
-            {practices.length === 0 ? (
-              <div className="text-center py-16 bg-gray-800/20 rounded-xl border border-gray-700/30">
-                <Calendar size={48} className="mx-auto mb-4 text-gray-600" />
-                <p className="text-gray-400 font-light text-lg">
-                  Begin building your Rule of Life
-                </p>
-                <p className="text-gray-500 font-light mt-2">
-                  Add your first spiritual practice to get started
-                </p>
-              </div>
-            ) : (
-              <div className="space-y-6">
-                {frequencies.map(freq => {
-                  const freqPractices = groupedPractices[freq.id];
-                  if (freqPractices.length === 0) return null;
-                  
-                  return (
-                    <div key={freq.id}>
-                      <h2 className="text-2xl font-light text-gray-300 mb-4 flex items-center gap-3">
-                        <Clock size={24} className="text-gray-500" />
-                        {freq.label}
-                      </h2>
-                      
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        {freqPractices.map(practice => {
-                          const Icon = getCategoryIcon(practice.category);
-                          const color = getCategoryColor(practice.category);
-                          
-                          return (
-                            <div
-                              key={practice.id}
-                              className="bg-gray-800/30 backdrop-blur-sm rounded-xl p-5 border border-gray-700/50
-                                       hover:bg-gray-800/50 transition-all group"
-                              style={{
-                                borderLeftWidth: '4px',
-                                borderLeftColor: color,
-                              }}
-                            >
-                              <div className="flex items-start justify-between mb-3">
-                                <div className="flex items-center gap-3">
-                                  <div 
-                                    className="p-2 rounded-lg"
-                                    style={{ backgroundColor: `${color}20` }}
-                                  >
-                                    <Icon size={20} style={{ color }} />
+            {/* Practices Display */}
+            {view === 'list' ? (
+              // List View
+              practices.length === 0 ? (
+                <div className="text-center py-16 bg-white rounded-2xl border border-gray-200">
+                  <Calendar size={48} className="mx-auto mb-4 text-gray-300" />
+                  <p className="text-gray-600 font-light text-lg">
+                    Begin building your Rule of Life
+                  </p>
+                  <p className="text-gray-400 font-light mt-2">
+                    Add your first spiritual practice to get started
+                  </p>
+                </div>
+              ) : (
+                <div className="space-y-6">
+                  {frequencies.map(freq => {
+                    const freqPractices = groupedPractices[freq.id];
+                    if (freqPractices.length === 0) return null;
+                    
+                    return (
+                      <div key={freq.id}>
+                        <h2 className="text-2xl font-light text-gray-700 mb-4 flex items-center gap-3">
+                          <Clock size={24} className="text-gray-400" />
+                          {freq.label}
+                        </h2>
+                        
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          {freqPractices.map(practice => {
+                            const Icon = getCategoryIcon(practice.category);
+                            const color = getCategoryColor(practice.category);
+                            const bg = getCategoryBg(practice.category);
+                            
+                            return (
+                              <div
+                                key={practice.id}
+                                className="bg-gray-800 rounded-xl p-5 border-2
+                                         hover:shadow-lg transition-all group"
+                                style={{
+                                  borderColor: color,
+                                }}
+                              >
+                                <div className="flex items-start justify-between mb-3">
+                                  <div className="flex items-center gap-3">
+                                    <div 
+                                      className="p-2 rounded-lg"
+                                      style={{ backgroundColor: `${color}30` }}
+                                    >
+                                      <Icon size={20} style={{ color }} />
+                                    </div>
+                                    <div>
+                                      <h3 className="font-medium text-gray-100">
+                                        {practice.name}
+                                      </h3>
+                                      <p className="text-sm font-light" style={{ color }}>
+                                        {categories.find(c => c.id === practice.category)?.label}
+                                      </p>
+                                    </div>
                                   </div>
-                                  <div>
-                                    <h3 className="font-medium text-gray-100">
-                                      {practice.name}
-                                    </h3>
-                                    <p className="text-sm text-gray-500 font-light">
-                                      {categories.find(c => c.id === practice.category)?.label}
-                                    </p>
+                                  
+                                  <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                    <button
+                                      onClick={() => startEdit(practice)}
+                                      className="p-2 rounded-lg hover:bg-gray-700 text-gray-400 
+                                               hover:text-blue-300 transition-colors"
+                                    >
+                                      <Edit2 size={16} />
+                                    </button>
+                                    <button
+                                      onClick={() => deletePractice(practice.id)}
+                                      className="p-2 rounded-lg hover:bg-gray-700 text-gray-400 
+                                               hover:text-red-300 transition-colors"
+                                    >
+                                      <Trash2 size={16} />
+                                    </button>
                                   </div>
                                 </div>
                                 
-                                <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                                  <button
-                                    onClick={() => startEdit(practice)}
-                                    className="p-2 rounded-lg hover:bg-gray-700/50 text-gray-400 
-                                             hover:text-blue-300 transition-colors"
-                                  >
-                                    <Edit2 size={16} />
-                                  </button>
-                                  <button
-                                    onClick={() => deletePractice(practice.id)}
-                                    className="p-2 rounded-lg hover:bg-gray-700/50 text-gray-400 
-                                             hover:text-red-300 transition-colors"
-                                  >
-                                    <Trash2 size={16} />
-                                  </button>
-                                </div>
+                                {(practice.time || practice.duration) && (
+                                  <div className="flex gap-4 text-sm text-gray-300 mb-3 font-light">
+                                    {practice.time && (
+                                      <span className="flex items-center gap-1">
+                                        <Clock size={14} />
+                                        {practice.time}
+                                      </span>
+                                    )}
+                                    {practice.duration && (
+                                      <span>{practice.duration}</span>
+                                    )}
+                                  </div>
+                                )}
+                                
+                                {practice.notes && (
+                                  <p className="text-sm text-gray-300 leading-relaxed font-light">
+                                    {practice.notes}
+                                  </p>
+                                )}
                               </div>
-                              
-                              {(practice.time || practice.duration) && (
-                                <div className="flex gap-4 text-sm text-gray-400 mb-3 font-light">
-                                  {practice.time && (
-                                    <span className="flex items-center gap-1">
-                                      <Clock size={14} />
-                                      {practice.time}
-                                    </span>
-                                  )}
-                                  {practice.duration && (
-                                    <span>{practice.duration}</span>
-                                  )}
-                                </div>
-                              )}
-                              
-                              {practice.notes && (
-                                <p className="text-sm text-gray-400 leading-relaxed font-light">
-                                  {practice.notes}
-                                </p>
-                              )}
-                            </div>
-                          );
-                        })}
+                            );
+                          })}
+                        </div>
                       </div>
+                    );
+                  })}
+                </div>
+              )
+            ) : (
+              // Timeline View
+              <div className="bg-gray-800 rounded-2xl p-4 md:p-6 border border-gray-700 shadow-sm">
+                <h2 className="text-2xl font-light text-pink-200 mb-6 flex items-center gap-3">
+                  <Calendar size={24} className="text-purple-300" />
+                  Your Week
+                </h2>
+
+                {weeklyPractices.length === 0 ? (
+                  <div className="text-center py-12">
+                    <p className="text-gray-400 font-light">
+                      Add daily or weekly practices to see your week timeline
+                    </p>
+                  </div>
+                ) : (
+                  <div className="relative">
+                    {/* Vertical timeline line */}
+                    <div className="absolute left-1/2 transform -translate-x-1/2 w-1 h-full bg-gradient-to-b from-purple-400 via-blue-400 to-pink-400 z-0"></div>
+
+                    {/* Days */}
+                    <div className="space-y-12">
+                      {daysOfWeek.map((day, dayIndex) => {
+                        const dayPractices = practicesByDay[day];
+                        if (dayPractices.length === 0) return null;
+
+                        return (
+                          <div key={day} className="relative">
+                            {/* Day marker */}
+                            <div className="flex justify-center mb-6">
+                              <div className="bg-gradient-to-r from-purple-500 to-pink-500 text-white px-6 py-2 rounded-full font-medium z-10 shadow-md relative">
+                                {day}
+                              </div>
+                            </div>
+
+                            {/* Practices for this day */}
+                            <div className="space-y-6">
+                              {dayPractices.map((practice, index) => {
+                                const Icon = getCategoryIcon(practice.category);
+                                const color = getCategoryColor(practice.category);
+                                const bg = getCategoryBg(practice.category);
+                                const isLeft = index % 2 === 0;
+
+                                return (
+                                  <div
+                                    key={practice.id}
+                                    className="flex items-center justify-center md:justify-start md:justify-end relative"
+                                  >
+                                    {/* Mobile/Tablet: centered full-width box */}
+                                    <div className="w-full mx-4 md:hidden relative z-20">
+                                      <div
+                                        className="bg-gray-900 rounded-xl p-4 border-2 shadow-lg"
+                                        style={{ borderColor: color }}
+                                      >
+                                        <div className="flex items-center gap-3 mb-2">
+                                          <div 
+                                            className="p-2 rounded-lg"
+                                            style={{ backgroundColor: `${color}30` }}
+                                          >
+                                            <Icon size={18} style={{ color }} />
+                                          </div>
+                                          <div className="flex-1">
+                                            <h4 className="font-medium text-gray-100 text-sm">
+                                              {practice.name}
+                                            </h4>
+                                            {practice.time && (
+                                              <p className="text-xs text-gray-400 flex items-center gap-1 mt-1">
+                                                <Clock size={12} />
+                                                {practice.time}
+                                              </p>
+                                            )}
+                                          </div>
+                                        </div>
+                                        {practice.notes && (
+                                          <p className="text-xs text-gray-300 font-light leading-relaxed">
+                                            {practice.notes}
+                                          </p>
+                                        )}
+                                      </div>
+                                    </div>
+
+                                    {/* Desktop: alternating left/right layout */}
+                                    <div className={`hidden md:flex items-center ${isLeft ? 'justify-start' : 'justify-end'} w-full`}>
+                                      <div
+                                        className={`w-5/12 ${isLeft ? 'pr-8' : 'pl-8'}`}
+                                      >
+                                        <div
+                                          className="bg-gray-900 rounded-xl p-4 border-2 shadow-lg hover:shadow-xl transition-all relative z-20"
+                                          style={{ borderColor: color }}
+                                        >
+                                          <div className="flex items-center gap-3 mb-2">
+                                            <div 
+                                              className="p-2 rounded-lg"
+                                              style={{ backgroundColor: `${color}30` }}
+                                            >
+                                              <Icon size={18} style={{ color }} />
+                                            </div>
+                                            <div className="flex-1">
+                                              <h4 className="font-medium text-gray-100 text-sm">
+                                                {practice.name}
+                                              </h4>
+                                              {practice.time && (
+                                                <p className="text-xs text-gray-400 flex items-center gap-1 mt-1">
+                                                  <Clock size={12} />
+                                                  {practice.time}
+                                                </p>
+                                              )}
+                                            </div>
+                                          </div>
+                                          {practice.notes && (
+                                            <p className="text-xs text-gray-300 font-light leading-relaxed">
+                                              {practice.notes}
+                                            </p>
+                                          )}
+                                        </div>
+                                      </div>
+
+                                      {/* Timeline dot */}
+                                      <div 
+                                        className="w-4 h-4 rounded-full z-30 border-4 border-gray-800 shadow-md absolute left-1/2 transform -translate-x-1/2"
+                                        style={{ backgroundColor: color }}
+                                      ></div>
+
+                                      <div className="w-5/12"></div>
+                                    </div>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        );
+                      })}
                     </div>
-                  );
-                })}
+                  </div>
+                )}
               </div>
             )}
+
+            {/* Reflection Section - MOVED TO BOTTOM */}
+            <div className="mt-8 bg-gradient-to-br from-purple-50 to-pink-50 rounded-2xl p-6 border border-purple-100 shadow-sm">
+              <div className="flex items-start justify-between mb-4">
+                <div className="flex flex-col justify-center gap-3">
+                  <div className="p-2 bg-purple-100 rounded-lg mr-4">
+                    <Journal size={24} className="text-purple-600" />
+                  </div>
+                  <h2 className="text-xl font-medium text-gray-800">Building Your "Rule of Life"</h2>
+                  <p className="text-sm text-gray-600">A rule of life is an intentional, personalized, and flexible framework of habits, practices, and rhythms designed to help an individual or community prioritize their spiritual life, values, and well-being amidst the busyness of modern life.</p>
+                </div>
+              </div>
+              
+              <p className="text-gray-700 leading-relaxed font-light italic mb-4 text-lg">
+                "{reflectionPrompts[currentPromptIndex]}"
+              </p>
+
+              <div className="flex gap-2 mb-3">
+                <button
+                  onClick={getNextPrompt}
+                  className="px-4 py-2 rounded-lg font-medium transition-all text-sm
+                           bg-white hover:bg-purple-50 text-purple-700 
+                           border border-purple-200"
+                >
+                  New Prompt
+                </button>
+                <button
+                  onClick={() => setShowReflectionForm(!showReflectionForm)}
+                  className="px-4 py-2 rounded-lg font-medium transition-all text-sm
+                           bg-purple-600 hover:bg-purple-700 text-white 
+                           border border-purple-600"
+                >
+                  {showReflectionForm ? 'Close' : 'Reflect'}
+                </button>
+              </div>
+
+              {showReflectionForm && (
+                <div className="space-y-4">
+                  <textarea
+                    value={currentReflection}
+                    onChange={(e) => setCurrentReflection(e.target.value)}
+                    placeholder="Write your thoughts, insights, or what you sense God is saying..."
+                    rows="4"
+                    className="w-full px-4 py-3 rounded-lg bg-white border border-purple-200 
+                             text-gray-800 placeholder-gray-400 focus:outline-none focus:border-purple-400
+                             transition-colors resize-none"
+                  />
+                  <button
+                    onClick={saveReflection}
+                    className="flex items-center gap-2 px-6 py-2 rounded-lg font-medium transition-all
+                             bg-purple-600 hover:bg-purple-700 text-white border border-purple-600"
+                  >
+                    <Save size={16} />
+                    Save Reflection
+                  </button>
+                </div>
+              )}
+
+              {!showReflectionForm && reflections.length > 0 && (
+                <div className="mt-6 space-y-3">
+                  <h3 className="text-sm font-medium text-gray-600 uppercase tracking-wide">Recent Reflections</h3>
+                  {reflections.slice(0, 2).map(reflection => (
+                    <div key={reflection.id} className="bg-white/70 rounded-lg p-4 border border-purple-100">
+                      <div className="flex items-start justify-between mb-2">
+                        <p className="text-xs text-gray-600 italic">"{reflection.prompt}"</p>
+                        <button
+                          onClick={() => deleteReflection(reflection.id)}
+                          className="text-gray-400 hover:text-red-500 transition-colors"
+                        >
+                          <Trash2 size={14} />
+                        </button>
+                      </div>
+                      <p className="text-sm text-gray-700 font-light">{reflection.text}</p>
+                      <p className="text-xs text-gray-500 mt-2">
+                        {new Date(reflection.createdAt).toLocaleDateString()}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
 
-          <div className="mt-16 border-t border-gray-800 bg-gray-900/50">
+          {/* Footer */}
+          <div className="mt-16 border-t border-gray-200 bg-white/50">
             <div className="max-w-6xl mx-auto px-6 py-8 text-center">
               <p className="text-gray-500 font-light text-sm">
                 "Keep my decrees and follow them. I am the LORD, who makes you holy." — Leviticus 20:8
